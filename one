@@ -1,0 +1,156 @@
+# #Open Redirect
+
+### 1. Redirect
+
+- Status : 301, 302, 3xx…
+- Chuyển hướng người dùng, yêu cầu, truy cập tài nguyên từ nguồn bên ngoài hoặc trên chính web đó .
+- Hàm : header() - PHP, redirect() - Python.
+- Không xác thực và lọc đầu vào đúng cách dẫn đến có thể chuyển hướng đến các trang không đáng tin cậy.
+- Một số hàm chuyển hướng phía người dùng :
+    
+    document.location
+    document.URL
+    document.open()
+    window.location.href
+    window.navigate()
+    window.open()
+    
+
+### 2. Các loại cơ chế mã hóa bảo vệ.
+
+1. Cơ bản. → Không mã hóa url đầu vào.
+2. Mã hóa URL : 
+    
+    Không cho phép một số kí tự đặc biệt thường nằm trong kịch bản tấn công như “>”, “<”…
+    
+    Mã xử lí đầu vào :
+    
+    <?php
+    
+    header(’Location:’.urldecode($_GET[”url”]));
+    
+    ?>
+    
+3. Mã hóa URL kép : 
+    
+    Mã hóa URL 2 lần đối với đầu vào của người dùng.
+    
+    Mã xử lí đầu vào :
+    
+    <?php
+    
+    header(’Location:’.urldecode(urldecode($_GET[”url”])));
+    
+    ?>
+    
+4. Mã hóa base64 : 
+    
+    URL được mã hóa base64 khi gửi đi, Backend giải mã base64 đó.
+    
+    Mã xử lí đầu vào :
+    
+    <?php
+    
+    header(’Location:’.base64_decode($_GET[”url”]));
+    
+    ?>
+    
+    Base64+ URL encode :
+    
+    Mã xử lí đầu vào :
+    
+    <?php
+    
+    header(’Location:’base64_decode(urldecode($_GET[”url”])));
+    
+    ?>
+    
+5. Hash.
+    
+    Tham số URL đầu vào được hash → phải biết được thuật toán hash.
+    
+    Nếu hash có salt → có thể salt sẽ được tìm thấy đâu đó ở phía frontend, hoặc ngay trên tham số đầu vào.
+    
+
+### 3. Chuyển hướng đến tài nguyên trên chính trang web đó.
+
+Ex : example.com?ReturnURL=index.php
+
+→ Có thể thử cho đầu vào bằng các file nhạy cảm.
+
+### 4. Giảm thiểu ;)))
+
+- Đầu vào của người dùng phải được vệ sinh đúng cách và phải được xác thực.
+- Không sử dụng trực tiếp đầu vào của người dùng cho việc chuyển hướng.
+- Nhà phát triển nên thiết lập danh sách trắng gồm các URL đáng tin cậy của mình.
+- Nếu nhà phát triển đang thiết lập bất kỳ giá trị băm hoặc giá trị salt nào thì giá trị đó sẽ bị ẩn và không hiển thị trong URL.
+- Ứng dụng web sẽ đưa ra cảnh báo khi người dùng cố gắng chuyển hướng đến một miền không đáng tin cậy.
+
+### 5. Tìm, kiểm tra.
+
+1. Status code 3xx, Header Location.
+    
+    HTTP/1.1 302 Object moved
+    Location: http://mdsec.net/updates/update29.html
+    
+2. Status code 200, Header Refresh.
+    
+    HTTP/1.1 200 OK
+    Refresh: 1; url=http://mdsec.net/updates/update29.html → Chờ 1 giây rồi chuyển hướng đến url
+    
+3. Thẻ <meta> HTML có thể thực hiện hành động chuyển hướng như các Header HTTP.
+    
+    HTTP/1.1 200 OK
+    Content-Length: 125
+    <html>
+    <head>
+    <meta http-equiv=”refresh” content=
+    “0;url=http://mdsec.net/updates/update29.html”>
+    </head>
+    </html>
+    
+4. Dữ liệu trả về (HTML,…) của API có thể dùng chuyển hướng.
+    
+    HTTP/1.1 200 OK
+    Content-Length: 120
+    <html>
+    <head>
+    <script>
+    document.location=”http://mdsec.net/updates/update29.html”;
+    </script>
+    </head>
+    </html>
+    
+5. Hack Steps
+    - Nếu url chuyển hướng là tuyệt đối thì thử thay đổi url sang 1 url tuyệt đối khác xem web có chuyển hướng không.
+    - Nếu url chuyển hướng là tương đối thì thử thay đổi url sang 1 url tuyệt đối xem web có chuyển hướng không.
+    - Nếu web chuyển hướng đến url đầu vào, thì web rất có thể dễ bị tấn công.
+
+### 6. Filter Bypass.
+
+1. Ứng dụng chặn URL tuyệt đối → Các cách bypass :
+    - HtTp://mdattacker.net
+    - %00http://mdattacker.net
+    - http://mdattacker.net//mdattacker.net
+    - %68%74%74%70%3a%2f%2fmdattacker.net
+    - %2568%2574%2574%2570%253a%252f%252fmdattacker.nethttps://mdattacker.net
+    - http:\\mdattacker.net
+    - http:///mdattacker.net
+2. Xóa tiền tố http://
+    - http://http://mdattacker.net
+    - http://mdattacker.net/http://mdattacker.net
+    - hthttp://tp://mdattacker.net
+3. Ứng dụng bắt buộc URL phải thuộc miền đó → Bypass :
+    - http://mdsec.net.mdattacker.net
+    - http://mdattacker.net/?http://mdsec.net
+    - http://mdattacker.net/%23http://mdsec.net
+4. Ứng dụng thêm tiền tố cho URL tương đối.
+    
+    GET /updates/72/?redir=/updates/update29.html HTTP/1.1
+    Host: mdsec.net
+    HTTP/1.1 302 Object moved
+    Location: http://mdsec.net/updates/update29.html
+    
+    → Bypass : http://mdsec.net/updates/72/?redir=.mdattacker.net
+    
+    → http://mdsec.net.mdattacker.net
